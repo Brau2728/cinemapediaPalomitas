@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cinemapedia/presentation/providers/auth/auth_provider.dart';
 
-class CustomAppbar extends StatelessWidget {
+class CustomAppbar extends ConsumerWidget implements PreferredSizeWidget {
   const CustomAppbar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final titleStyle = Theme.of(context).textTheme.titleMedium;
 
     return SafeArea(
@@ -15,11 +21,31 @@ class CustomAppbar extends StatelessWidget {
           width: double.infinity,
           child: Row(
             children: [
-              Text('Cinemapedia',style: titleStyle,),
+              Text('Cinemapedia', style: titleStyle),
               Spacer(),
               IconButton(
-                onPressed: (){},
+                onPressed: () {},
                 icon: Icon(Icons.search_outlined),
+              ),
+              Consumer(
+                builder: (context, ref, child) {
+                  final authState = ref.watch(authStateProvider);
+                  return authState.when(
+                    data: (user) {
+                      if (user != null) {
+                        return IconButton(
+                          onPressed: () {
+                            ref.read(authProvider.notifier).signOut();
+                          },
+                          icon: Icon(Icons.logout_outlined),
+                        );
+                      }
+                      return SizedBox.shrink();
+                    },
+                    loading: () => CircularProgressIndicator(),
+                    error: (error, stack) => SizedBox.shrink(),
+                  );
+                },
               ),
             ],
           ),

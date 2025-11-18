@@ -1,4 +1,3 @@
-import 'package:cinemapedia/domain/entities/movies.dart';
 import 'package:cinemapedia/presentation/providers/movies/movies_by_genre_provider.dart';
 import 'package:cinemapedia/presentation/widgets/movies/movie_horizontal_listview.dart';
 import 'package:cinemapedia/presentation/widgets/shared/custom_appbar.dart';

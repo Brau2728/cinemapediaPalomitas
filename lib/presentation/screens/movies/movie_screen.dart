@@ -4,6 +4,7 @@ import 'package:cinemapedia/presentation/providers/movies/movie_info_provider.da
 import 'package:cinemapedia/presentation/providers/movies/movie_cast_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cinemapedia/presentation/widgets/movies/comments_section.dart';
 
 class MovieScreen extends ConsumerStatefulWidget {
   static const name = 'movie-screen';
@@ -167,6 +168,7 @@ class _MovieDetail extends StatelessWidget {
           ),
           SizedBox(height: 20),
         ],
+        CommentsSection(movieId: movie.id.toString()), //Comentarios
 
         SizedBox(height: 100),
       ],

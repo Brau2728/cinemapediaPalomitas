@@ -7,8 +7,10 @@ class FirestoreRepositoryImpl extends LocalStorageRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Helper para obtener la colección del usuario actual
   CollectionReference get _favoritesCollection {
     final uid = _auth.currentUser?.uid;
+    // Si no hay usuario, retornamos una referencia segura o lanzamos error controlado
     if (uid == null) throw Exception('Usuario no logueado');
     return _firestore.collection('users').doc(uid).collection('favorites');
   }
@@ -32,11 +34,10 @@ class FirestoreRepositoryImpl extends LocalStorageRepository {
     final doc = await docRef.get();
 
     if (doc.exists) {
-   
+      // Borrar
       await docRef.delete();
     } else {
-      // Si no existe, lo creamos (agregar a favoritos)
-      // Convertimos la entidad Movie a un Mapa simple para guardar
+      // Crear
       await docRef.set({
         'id': movie.id,
         'title': movie.title,
@@ -52,48 +53,62 @@ class FirestoreRepositoryImpl extends LocalStorageRepository {
         'video': movie.video,
         'voteCount': movie.voteCount,
         'genreIds': movie.genreIds,
-        'timestamp': FieldValue.serverTimestamp(), // Para ordenar después
+        'timestamp': FieldValue.serverTimestamp(),
       });
     }
   }
 
-  
-
- @override
+  @override
   Future<List<Movie>> loadMovies({int limit = 10, offset = 0}) async {
-    final snapshot = await _favoritesCollection
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .get();
+    try {
+      // 1. Intentamos obtener los datos
+      final snapshot = await _favoritesCollection
+          .orderBy('timestamp', descending: true)
+          .limit(limit)
+          .get();
 
-    final List<Movie> movies = [];
+      final List<Movie> movies = [];
 
-    for (final doc in snapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      for (final doc in snapshot.docs) {
+        try {
+          // 2. Convertimos los datos de forma SEGURA
+          final data = doc.data() as Map<String, dynamic>;
 
-      // Creación manual de la película con protección de tipos
-      movies.add(Movie(
-        adult: data['isAdult'] ?? false,
-        backdropPath: data['backdropPath'] ?? '',
-        // Aseguramos que genreIds sea una lista de Strings
-        genreIds: List<String>.from(data['genreIds']?.map((e) => e.toString()) ?? []),
-        id: data['id'] ?? 0,
-        originalLanguage: data['originalLanguage'] ?? '',
-        originalTitle: data['originalTitle'] ?? '',
-        overview: data['overview'] ?? '',
-        // 🔥 AQUÍ ESTÁ EL ARREGLO CLAVE: (as num?)?.toDouble()
-        // Esto acepta tanto 7 como 7.5 y lo convierte a 7.0 o 7.5 sin error
-        popularity: (data['popularity'] as num?)?.toDouble() ?? 0.0,
-        posterPath: data['posterPath'] ?? '',
-        releaseDate: DateTime.tryParse(data['releaseDate'] ?? '') ?? DateTime.now(),
-        title: data['title'] ?? 'Sin Título',
-        video: data['video'] ?? false,
-        // 🔥 AQUÍ TAMBIÉN:
-        voteAverage: (data['voteAverage'] as num?)?.toDouble() ?? 0.0,
-        voteCount: data['voteCount'] ?? 0,
-      ));
+          // Validación mínima: Si no tiene título o path, no sirve.
+          if (data['title'] == null || data['posterPath'] == null) continue;
+
+          movies.add(Movie(
+            adult: data['isAdult'] ?? false,
+            backdropPath: data['backdropPath'] ?? '',
+            // Convertimos la lista de géneros a String de forma segura
+            genreIds: (data['genreIds'] as List<dynamic>?)
+                    ?.map((e) => e.toString())
+                    .toList() ?? [],
+            id: data['id'] ?? 0,
+            originalLanguage: data['originalLanguage'] ?? '',
+            originalTitle: data['originalTitle'] ?? '',
+            overview: data['overview'] ?? '',
+            // 🔥 EL ARREGLO MÁGICO: (as num?)?.toDouble()
+            // Esto evita el crash por "int is not subtype of double"
+            popularity: (data['popularity'] as num?)?.toDouble() ?? 0.0,
+            posterPath: data['posterPath'] ?? '',
+            releaseDate: DateTime.tryParse(data['releaseDate'] ?? '') ?? DateTime.now(),
+            title: data['title'] ?? 'Sin Título',
+            video: data['video'] ?? false,
+            // 🔥 AQUÍ TAMBIÉN
+            voteAverage: (data['voteAverage'] as num?)?.toDouble() ?? 0.0,
+            voteCount: (data['voteCount'] as num?)?.toInt() ?? 0,
+          ));
+        } catch (e) {
+          // Si UNA película falla, la imprimimos en consola pero NO rompemos la app
+          print("⚠️ Error al leer una película: $e");
+        }
+      }
+      return movies;
+
+    } catch (e) {
+      print("❌ Error general al cargar favoritos: $e");
+      return []; // Retornamos lista vacía en vez de romper todo
     }
-
-    return movies;
   }
 }

@@ -25,9 +25,9 @@ class CommentsSectionState extends ConsumerState<CommentsSection> {
     ref.read(commentsRepositoryProvider).addComment(
           movieId: widget.movieId,
           userId: user.uid,
-          userName: nameToShow, 
-          userEmail: user.email,        
-          userPhotoUrl: user.photoURL,  
+          userName: nameToShow,
+          userEmail: user.email,
+          userPhotoUrl: user.photoURL,
           text: _commentController.text.trim(),
         );
 
@@ -55,8 +55,14 @@ class CommentsSectionState extends ConsumerState<CommentsSection> {
                 // Tu foto actual al escribir
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                  child: user.photoURL == null ? Text(user.email![0].toUpperCase()) : null,
+                  backgroundImage: (user.photoURL != null && user.photoURL!.isNotEmpty)
+                      ? NetworkImage(user.photoURL!) 
+                      : null,
+                  child: (user.photoURL == null || user.photoURL!.isEmpty)
+                      ? Text(user.email != null && user.email!.isNotEmpty 
+                          ? user.email![0].toUpperCase() 
+                          : '?') 
+                      : null,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -99,14 +105,21 @@ class CommentsSectionState extends ConsumerState<CommentsSection> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          //   FOTO DE PERFIL 
+                          //  FOTO DE PERFIL (CORREGIDO AQUÍ)
                           CircleAvatar(
                             radius: 20,
-                            backgroundImage: comment.userPhotoUrl != null 
+                            // Verificamos que la URL no sea nula Y no esté vacía
+                            backgroundImage: (comment.userPhotoUrl != null && comment.userPhotoUrl!.isNotEmpty)
                                 ? NetworkImage(comment.userPhotoUrl!) 
                                 : null,
-                            child: comment.userPhotoUrl == null 
-                                ? Text(comment.userName[0].toUpperCase()) 
+                            // Si no hay foto, ponemos la letra
+                            child: (comment.userPhotoUrl == null || comment.userPhotoUrl!.isEmpty)
+                                ? Text(
+                                    // CORRECCIÓN PRINCIPAL: Verificamos si hay nombre antes de pedir el índice [0]
+                                    comment.userName.trim().isNotEmpty
+                                        ? comment.userName.trim()[0].toUpperCase()
+                                        : '?', // Letra por defecto si no tiene nombre
+                                  ) 
                                 : null,
                           ),
                           const SizedBox(width: 12),
@@ -119,7 +132,10 @@ class CommentsSectionState extends ConsumerState<CommentsSection> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(comment.userName, style: textStyles.titleSmall),
+                                    Text(
+                                      comment.userName.isNotEmpty ? comment.userName : 'Anónimo', // Protección extra en el nombre completo
+                                      style: textStyles.titleSmall
+                                    ),
                                     Text(
                                       DateFormat.MMMd().format(comment.timestamp),
                                       style: textStyles.bodySmall?.copyWith(color: Colors.grey),
